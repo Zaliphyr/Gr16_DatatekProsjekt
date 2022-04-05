@@ -1,0 +1,219 @@
+#include <Zumo32U4.h>       // importerar bibliotek
+#include <Wire.h>
+
+
+Zumo32U4ButtonA buttonA;
+Zumo32U4Motors motors;     // gir beskivande namn
+Zumo32U4Encoders encoders;
+Zumo32U4LCD lcd;
+Zumo32U4LineSensors lineSensor;
+Zumo32U4Buzzer buzzer;
+
+
+// 8 av dei 12 stega er 1 mm, 1 steg = 0.125mm 
+// batteriet vare i 1200mAh/20mA = 60 timar, 20 er forbruket ved 5cm/s
+
+// stepcount = encoders.getCountsAndResetRight();
+// lcd.clear();
+// lcd.setCursor(0,0);
+// lcd.print(stepcount);  
+
+// int time1 = 0;
+// int time100ms = 0;
+// int distanceTime = 0;
+// float driveTime = 0;  // i sekund
+// int wait1 = 0; // så speedometer ventar i 1 sek
+// int driveSeconds = 0;
+// float maxVelocity = 0;
+// float distanceLeft;
+// float distanceRight;
+// float distanceAverage;
+// float distanceVelocity = 0;
+// float totalDistance = 0;
+// float averageVelocity;
+// int topSpeed = 1; // i meter/sekund
+// float timeOver70 = 0; // i sekund
+
+// countsRight = encoders.getCountsAndResetRight();
+// countsLeft = encoders.getCountsAndResetLeft();
+// distanceLeft += countsRight * 0.000125;  // blir i meter
+// distanceRight += countsLeft * 0.000125;  // blir i meter
+// distanceAverage = ((distanceLeft + distanceRight) / 2)
+// distanceVelocity += distanceAverage;
+// totalDistance += distanceAverage;
+
+
+// if ((millis() - distanceTime) >= 100){
+//    velocity = distanceAverage / 0.1; //meter / sekund
+//    distanceTime = millis();
+//    if (velocity > maxVelocity){
+//       maxVelocity = velocity;    
+//    }
+//    if (velocity >= (0.7 * topSpeed)){
+//       timeOver70 += 0.1;
+//    }
+//    if ((millis() - wait10) > 0){
+//       lcd.clear();
+//       lcd.setCursor(0,0);
+//       lcd.print(String(distanceAverage) + "m");
+//       lcd.setCursor(0,1);
+//       lcd.print(String(velocity) + "m/s"); 
+//    }
+// }
+
+// if (distanceAverage > 0){
+//    if ((millis() - time60) >=1000){
+//       driveSeconds += 1;
+//       time60 = millis();
+//       if (driveSeconds >= 60){
+//          averageVelocity = totalDistance / driveTime;
+//          lcd.clear();
+//          lcd
+//       }
+//        
+//    }
+//    if ((millis() - time100ms) >= 100){
+//       driveTime += 0.1;
+//       time100ms = millis();
+//    }
+// }
+//    
+//
+//    
+
+
+
+
+int pos;
+unsigned int linesensorValues[5];
+int error;
+const int wantedValue = 2000;
+float Kp = 0.8;
+float Td = 1.5;
+int lastError = 0;
+
+int time1 = 0;
+int time100ms = 0;
+int countsRight;
+int countsLeft;
+float velocity;
+int distanceTime = 0;
+float driveTime = 0;  // i sekund
+int wait1 = 0; //
+int driveSeconds = 0;
+float maxVelocity = 0;
+float distanceLeft;
+float distanceRight;
+float distanceAverage;
+float distanceVelocity = 0;
+float totalDistance = 0;
+float averageVelocity;
+int topSpeed = 1; // i meter/sekund
+float timeOver70 = 0; // i sekund
+
+void setup() {
+  lineSensor.initFiveSensors();
+  lcd.init();
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Press A Button");
+
+  buttonA.waitForButton();
+  lcd.clear();
+  cal();
+  delay(1000);
+  lcd.setCursor(0,0);
+  lcd.print("Calb");
+  lcd.setCursor(0,1);
+  lcd.print("Done");
+  delay(1000);
+  buzzer.playFrequency(440, 500, 8);
+  delay(1000);
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Currently");
+  lcd.setCursor(0,1);
+  lcd.print("driving");
+  
+}
+
+void loop() {
+  countsRight = encoders.getCountsAndResetRight();
+  countsLeft = encoders.getCountsAndResetLeft();
+  distanceLeft = countsRight * 0.000125;  // blir i meter
+  distanceRight = countsLeft * 0.000125;  // blir i meter
+  distanceAverage += ((distanceLeft + distanceRight) / 2);
+  distanceVelocity += distanceAverage; // ?
+  totalDistance += distanceAverage;
+
+
+  if ((millis() - distanceTime) >= 100){
+    velocity = ((distanceLeft + distanceRight) / 2) / 0.1; //meter / sekund
+    distanceTime = millis();
+    if (velocity > maxVelocity){
+      maxVelocity = velocity;    
+    }
+    if (velocity >= (0.7 * topSpeed)){
+      timeOver70 += 0.1;
+    }
+    if ((millis() - wait1) > 500){
+      Serial.println(distanceLeft);
+      Serial.println(distanceRight);
+      Serial.println(velocity);
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print(String(distanceAverage) + "m");
+      lcd.setCursor(0,1);
+      lcd.print(String(velocity) + "m/s"); 
+      wait1 = millis();
+    }
+  }
+
+  if (distanceAverage > 0){
+    if ((millis() - time1) >=1000){
+      driveSeconds += 1;
+      time1 = millis();
+      if (driveSeconds >= 60){
+        averageVelocity = totalDistance / driveTime;
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print(averageVelocity);
+        lcd.setCursor(0,1);
+        lcd.print(timeOver70);
+      }
+        
+    }
+    if ((millis() - time1) >= 100){
+      driveTime += 0.1;
+      time1 = millis();
+    }
+  }
+  
+
+  pos = lineSensor.readLine(linesensorValues);
+  error = pos - wantedValue;
+  int speedDifference = (error * Kp) + Td * (error - lastError);
+  int leftSpeed = 400 + speedDifference;
+  leftSpeed = constrain(leftSpeed, 0, 400);
+  int rightSpeed = 400 - speedDifference;
+  rightSpeed = constrain(rightSpeed, 0, 400);
+
+  motors.setSpeeds(leftSpeed, rightSpeed);
+
+  lastError = error;
+}
+
+// Calibration function
+// Turns car left and right while calibrating the linesensor
+void cal(){
+  delay(1000);
+  for (int i = 0; i <= 120; i++){
+    if (i > 30 && i <= 90){
+      motors.setSpeeds(-150, 150);
+    } else {
+      motors.setSpeeds(150, -150);
+    }
+    lineSensor.calibrate();
+  }
+  motors.setSpeeds(0, 0);
+}
