@@ -1,15 +1,17 @@
-#include <Zumo32U4.h>       // importerar bibliotek
+#include <Arduino.h>
+#include <Zumo32U4.h> // importerar bibliotek
 #include <Wire.h>
 
-
 Zumo32U4ButtonA buttonA;
-Zumo32U4Motors motors;     // gir beskivande namn
+Zumo32U4Motors motors; // gir beskivande namn
 Zumo32U4Encoders encoders;
 Zumo32U4LCD lcd;
 Zumo32U4LineSensors lineSensor;
 Zumo32U4Buzzer buzzer;
 
-
+void checkForTurn();
+void lineFollower();
+void endOfLine();
 
 int pos;
 unsigned int linesensorValues[5];
@@ -28,134 +30,52 @@ int noRoad = 0;
 int deadEnd = 0;
 int deadTime = 0;
 
-
-void setup() {
+void setup()
+{
   lineSensor.initFiveSensors();
   Serial.begin(9600);
   lineSensor.initFiveSensors();
   lcd.init();
   lcd.clear();
-  lcd.setCursor(0,0);
+  lcd.setCursor(0, 0);
   lcd.print("Press A Button");
 
   buttonA.waitForButton();
   lcd.clear();
   cal();
   delay(1000);
-  lcd.setCursor(0,0);
+  lcd.setCursor(0, 0);
   lcd.print("Calb");
-  lcd.setCursor(0,1);
+  lcd.setCursor(0, 1);
   lcd.print("Done");
   delay(1000);
   buzzer.playFrequency(440, 500, 8);
   delay(1000);
   lcd.clear();
-  
 }
 
-void loop() {
+void loop()
+{
 
   lineSensor.readCalibrated(linesensorValues);
 
-  // Checks if the car drives over a sharp turn
-  if (linesensorValues[0] >= 900 && linesensorValues[2] >= 900 && linesensorValues[1] && leftCorner == 0){
-    leftCorner = 1;
-    cornerTime = millis();
-    deadEnd = 1;
-    deadTime = millis();
-  }
-
-  // Checks if the car drives over a sharp turn
-  else if (linesensorValues[3] >= 900 && linesensorValues[2] >= 900 && linesensorValues[4] >= 900 && rightCorner == 0){
-    cornerTime = millis();
-    rightCorner = 1;
-    deadEnd = 1;
-    deadTime = millis();
-  }
-
-  else{
-    speedValue = 400;
-  }
-
-
-  if( leftCorner == 0 && rightCorner == 0){
-    pos = lineSensor.readLine(linesensorValues);
-    error = pos - wantedValue;
-    int speedDifference = (error * Kp) + Td * (error - lastError);
-    int leftSpeed = 400 + speedDifference;
-    leftSpeed = constrain(leftSpeed, 0, speedValue);
-    int rightSpeed = 400 - speedDifference;
-    rightSpeed = constrain(rightSpeed, 0, speedValue);
-    motors.setSpeeds(leftSpeed, rightSpeed);
-  }
-
-  else if (leftCorner == 1){
-    motors.setSpeeds (200, 200);
-  }
-
-  else if (rightCorner == 1){
-    motors.setSpeeds (200, 200);
-  }
-
-  else if (noRoad == 1){
-    motors.setSpeeds(0, 100);
-  }
-
-  if (linesensorValues[0] < 200 && linesensorValues[1] < 200 && linesensorValues[2] < 200 && linesensorValues[3] < 200 && linesensorValues[4] < 200){
-    if (deadEnd == 0){
-      motors.setSpeeds(200, 200);
-    }
-    else if (deadEnd == 1){
-      turnAngle(180);
-    }
-    
-  }
-
-
-  if ((millis() - cornerTime) > 100 && (millis() - cornerTime) < 200){
-    leftCorner = 0;
-    rightCorner = 0;
-    if (linesensorValues[2] <= 200){
-      lcd.setCursor(0,0);
-      turnTime = millis();
-      noRoad = 1;
-      lcd.print(noRoad);
-    }
-  }
-
-  if ((millis() - turnTime) >= 500){
-    noRoad = 0;
-  }
-
-  if ((millis() - deadTime)>= 1000){
-    deadEnd = 0;
-  }
-
-
-  lastError = error;
-
-    // Serial.print(linesensorValues[0]);
-    // Serial.print(" ");
-    // Serial.print(linesensorValues[1]);
-    // Serial.print(" ");
-    // Serial.print(linesensorValues[2]);
-    // Serial.print(" ");
-    // Serial.print(linesensorValues[3]);
-    // Serial.print(" ");
-    // Serial.print(linesensorValues[4]);
-    // Serial.println(" ");
-    // delay(100);
+  checkForTurn();
+  lineFollower();
 }
-
 
 // Calibration function
 // Turns car left and right while calibrating the linesensor
-void cal(){
+void cal()
+{
   delay(1000);
-  for (int i = 0; i <= 120; i++){
-    if (i > 30 && i <= 90){
+  for (int i = 0; i <= 120; i++)
+  {
+    if (i > 30 && i <= 90)
+    {
       motors.setSpeeds(-150, 150);
-    } else {
+    }
+    else
+    {
       motors.setSpeeds(150, -150);
     }
     lineSensor.calibrate();
@@ -187,4 +107,95 @@ void turnAngle(int angle)
     }
   }
   motors.setSpeeds(0, 0);
+}
+
+void checkForTurn()
+{
+  // Checks if the car drives over a sharp turn
+  if (linesensorValues[0] >= 900 && linesensorValues[2] >= 900 && linesensorValues[1] && leftCorner == 0)
+  {
+    leftCorner = 1;
+    cornerTime = millis();
+    deadEnd = 1;
+    deadTime = millis();
+  }
+
+  // Checks if the car drives over a sharp turn
+  else if (linesensorValues[3] >= 900 && linesensorValues[2] >= 900 && linesensorValues[4] >= 900 && rightCorner == 0)
+  {
+    cornerTime = millis();
+    rightCorner = 1;
+    deadEnd = 1;
+    deadTime = millis();
+  }
+}
+
+void lineFollower()
+{
+  if (leftCorner == 0 && rightCorner == 0)
+  {
+    pos = lineSensor.readLine(linesensorValues);
+    error = pos - wantedValue;
+    int speedDifference = (error * Kp) + Td * (error - lastError);
+    int leftSpeed = 400 + speedDifference;
+    leftSpeed = constrain(leftSpeed, 0, speedValue);
+    int rightSpeed = 400 - speedDifference;
+    rightSpeed = constrain(rightSpeed, 0, speedValue);
+    motors.setSpeeds(leftSpeed, rightSpeed);
+  }
+
+  else if (leftCorner == 1)
+  {
+    motors.setSpeeds(200, 200);
+  }
+
+  else if (rightCorner == 1)
+  {
+    motors.setSpeeds(200, 200);
+  }
+
+  else if (noRoad == 1)
+  {
+    motors.setSpeeds(0, 100);
+  }
+}
+
+void endOfLine()
+{
+  if (linesensorValues[0] < 200 && linesensorValues[1] < 200 && linesensorValues[2] < 200 && linesensorValues[3] < 200 && linesensorValues[4] < 200)
+  {
+    if (deadEnd == 0)
+    {
+      motors.setSpeeds(200, 200);
+    }
+    else if (deadEnd == 1)
+    {
+      turnAngle(180);
+    }
+  }
+
+  if ((millis() - cornerTime) > 100 && (millis() - cornerTime) < 200)
+  {
+    leftCorner = 0;
+    rightCorner = 0;
+    if (linesensorValues[2] <= 200)
+    {
+      lcd.setCursor(0, 0);
+      turnTime = millis();
+      noRoad = 1;
+      lcd.print(noRoad);
+    }
+  }
+
+  if ((millis() - turnTime) >= 500)
+  {
+    noRoad = 0;
+  }
+
+  if ((millis() - deadTime) >= 1000)
+  {
+    deadEnd = 0;
+  }
+
+  lastError = error;
 }
