@@ -61,6 +61,7 @@ void loop()
 
   checkForTurn();
   lineFollower();
+  endOfLine();
 }
 
 // Calibration function
