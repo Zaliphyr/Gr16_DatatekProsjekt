@@ -112,7 +112,7 @@ void loop() {
   }
 
 
-  if ((millis() - cornerTime) > 400){
+  if ((millis() - cornerTime) > 100 && (millis() - cornerTime) < 200){
     leftCorner = 0;
     rightCorner = 0;
     if (linesensorValues[2] <= 200){
@@ -123,11 +123,11 @@ void loop() {
     }
   }
 
-  if ((millis() - turnTime) >= 1000){
+  if ((millis() - turnTime) >= 500){
     noRoad = 0;
   }
 
-  if ((millis() - deadTime)>= 700){
+  if ((millis() - deadTime)>= 1000){
     deadEnd = 0;
   }
 
