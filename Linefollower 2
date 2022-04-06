@@ -1,0 +1,222 @@
+#include <Zumo32U4.h>       // importerar bibliotek
+#include <Wire.h>
+
+
+Zumo32U4ButtonA buttonA;
+Zumo32U4Motors motors;     // gir beskivande namn
+Zumo32U4Encoders encoders;
+Zumo32U4LCD lcd;
+Zumo32U4LineSensors lineSensor;
+Zumo32U4Buzzer buzzer;
+
+
+
+int pos;
+unsigned int linesensorValues[5];
+int error;
+const int wantedValue = 2000;
+float Kp = 0.5;  // kanskje endre for betre linjefølging?
+float Td = 2;  // kanskje endre for betre linjefølging?
+int lastError = 0;
+float speedValue = 400;
+
+int leftCorner = 0;
+int rightCorner = 0;
+int cornerTime = 0;
+int turnTime = 0;
+int noRoadLeft = 0;
+int noRoadRight = 0;
+int deadEnd = 0;
+int deadTime = 0;
+int rightNext = 0;
+int negativeTurnSpeed;
+int turnRefrence ;
+int afterNext = 0;
+int afterTime = 0;
+
+
+void setup() {
+  lineSensor.initFiveSensors();
+  Serial.begin(9600);
+  lineSensor.initFiveSensors();
+  lcd.init();
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Press A Button");
+
+  buttonA.waitForButton();
+  lcd.clear();
+  cal();
+  delay(1000);
+  lcd.setCursor(0,0);
+  lcd.print("Calb");
+  lcd.setCursor(0,1);
+  lcd.print("Done");
+  delay(1000);
+  buzzer.playFrequency(440, 500, 8);
+  delay(1000);
+  lcd.clear();
+  
+}
+
+void loop() {
+
+  lineSensor.readCalibrated(linesensorValues);
+
+  // Checks if the car drives over a sharp turn
+  if (linesensorValues[0] >= 900 && linesensorValues[2] >= 900 && linesensorValues[1] && leftCorner == 0 && linesensorValues[3] > 100){
+    leftCorner = 1;
+    cornerTime = millis();
+    deadEnd = 1;
+    deadTime = millis();
+    turnTime = millis();
+    noRoadLeft = 1;
+  }
+
+  // Checks if the car drives over a sharp turn
+  else if (linesensorValues[3] >= 900 && linesensorValues[2] >= 900 && linesensorValues[4] >= 900 && rightCorner == 0 && linesensorValues[1] > 100){
+    cornerTime = millis();
+    rightCorner = 1;
+    deadEnd = 1;
+    deadTime = millis();
+    turnTime = millis();
+    noRoadRight = 1;
+  }
+
+  else{
+    speedValue = 400;
+  }
+
+  if( leftCorner == 0 && rightCorner == 0){
+    pos = lineSensor.readLine(linesensorValues);
+    error = pos - wantedValue;
+    int speedDifference = (error * Kp) + Td * (error - lastError);
+    int leftSpeed = 400 + speedDifference;
+    leftSpeed = constrain(leftSpeed, 0, speedValue);
+    int rightSpeed = 400 - speedDifference;
+    rightSpeed = constrain(rightSpeed, 0, speedValue);
+    motors.setSpeeds(leftSpeed, rightSpeed);
+  }
+
+  else if (rightNext == 1){
+    if (rightCorner == 1){
+      turnAngle(90, 400, true);
+      rightNext =0; 
+      rightCorner = 0;
+      deadEnd = 0;
+      afterNext = 1;
+      afterTime = millis();
+      lineSensor.readCalibrated(linesensorValues);
+    }
+  }
+
+  else if (rightCorner == 1 || leftCorner ==1){
+    motors.setSpeeds (400, 400);
+  }
+
+  if (linesensorValues[0] < 200 && linesensorValues[1] < 200 && linesensorValues[2] < 200 && linesensorValues[3] < 200 && linesensorValues[4] < 200 && afterNext == 0){
+    if (deadEnd == 0 && noRoadLeft == 0 && noRoadRight == 0){
+      motors.setSpeeds(400, 400);
+    }
+    else if (deadEnd == 1 && noRoadLeft == 0 && noRoadRight == 0){
+      turnAngle(180, 400, true);
+      rightNext = 1;
+    }
+
+    else if (noRoadLeft == 1 && deadEnd == 1){
+      turnAngle(-90, 400, true);
+      noRoadLeft = 0;
+      deadEnd = 0;
+    }
+
+    else if (noRoadRight == 1 && deadEnd == 1){
+      turnAngle(90, 400, true);
+      noRoadRight = 0;
+      deadEnd = 0;
+    }
+  }
+
+  if ((millis() - cornerTime) > 10 && (millis() - cornerTime) < 20){
+    leftCorner = 0;
+    rightCorner = 0;
+  }
+
+  if ((millis() - turnTime) >= 150){
+    noRoadLeft = 0;
+    noRoadRight = 0;
+  }
+
+  if ((millis() - deadTime)>= 520){
+    deadEnd = 0;
+  }
+
+  if ((millis() - afterTime)>= 100){
+    afterNext = 0;
+  }
+
+  lastError = error;
+
+    // Serial.print(linesensorValues[0]);
+    // Serial.print(" ");
+    // Serial.print(linesensorValues[1]);
+    // Serial.print(" ");
+    // Serial.print(linesensorValues[2]);
+    // Serial.print(" ");
+    // Serial.print(linesensorValues[3]);
+    // Serial.print(" ");
+    // Serial.print(linesensorValues[4]);
+    // Serial.println(" ");
+    // delay(100);
+}
+
+
+// Calibration function
+// Turns car left and right while calibrating the linesensor
+void cal(){
+  delay(1000);
+  for (int i = 0; i <= 120; i++){
+    if (i > 30 && i <= 90){
+      motors.setSpeeds(-150, 150);
+    } else {
+      motors.setSpeeds(150, -150);
+    }
+    lineSensor.calibrate();
+  }
+  motors.setSpeeds(0, 0);
+}
+
+void turnAngle(int angle, int turnSpeed, bool turnWithBothWheels){
+  // turn the robot by angle degrees
+  int leftStartAngle = encoders.getCountsLeft();
+  int rightStartAngle = encoders.getCountsRight();
+
+  motors.setSpeeds(0, 0);
+  delay(100);
+
+  if (turnWithBothWheels == true)
+  {
+      negativeTurnSpeed = -turnSpeed;
+      turnRefrence = 7.5;
+  }
+  else
+  {
+      negativeTurnSpeed = 0;
+      turnRefrence = 14.5;
+  }
+
+  if (angle > 0)
+  {
+      while (angle > (encoders.getCountsLeft() - leftStartAngle) / turnRefrence)
+      {
+          motors.setSpeeds(turnSpeed, negativeTurnSpeed);
+      }
+  }
+  else if (angle < 0)
+  {
+      while (abs(angle) > (encoders.getCountsRight() - rightStartAngle) / turnRefrence)
+      {
+          motors.setSpeeds(negativeTurnSpeed, turnSpeed);
+      }
+  }
+  motors.setSpeeds(0, 0);
+}
