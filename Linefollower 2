@@ -17,8 +17,8 @@ int pos;
 unsigned int linesensorValues[5];
 int error;
 const int wantedValue = 2000;
-float Kp = 0.5; 
-float Td = 2; 
+float Kp = 0.6; 
+float Td = 2.4; 
 int lastError = 0;
 float speedValue = 400;
 int leftCorner = 0;
@@ -68,7 +68,7 @@ void loop() {
 
   // Checks if the car drives over a 90degree leftturn
   // initiates if the middle and two left sensors are very high, and first right sensor i fairly low
-  if (linesensorValues[0] >= 900 && linesensorValues[2] >= 900 && linesensorValues[1] && leftCorner == 0 && linesensorValues[3] > 100){
+  if (linesensorValues[0] >= 800 && linesensorValues[2] >= 800 && linesensorValues[1] >= 800 && leftCorner == 0 && linesensorValues[3] > 80){
     leftCorner = 1;
     cornerTime = millis();
     deadEnd = 1;
@@ -79,7 +79,7 @@ void loop() {
 
   // Checks if the car drives over a 90degree rightturn
   // initiates if the middle and two right sensors are very high, and first left sensor i fairly low
-  else if (linesensorValues[3] >= 900 && linesensorValues[2] >= 900 && linesensorValues[4] >= 900 && rightCorner == 0 && linesensorValues[1] > 100){
+  else if (linesensorValues[3] >= 800 && linesensorValues[2] >= 800 && linesensorValues[4] >= 800 && rightCorner == 0 && linesensorValues[1] > 80){
     cornerTime = millis();
     rightCorner = 1;
     deadEnd = 1;
