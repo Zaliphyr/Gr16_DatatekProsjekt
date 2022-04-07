@@ -16,7 +16,7 @@ unsigned int linesensorValues[5];
 int error;
 const int wantedValue = 2000;
 float Kp = 0.5;  // kanskje endre for betre linjefølging?
-float Td = 2;  // kanskje endre for betre linjefølging?
+float Td = 1.5;  // kanskje endre for betre linjefølging?
 int lastError = 0;
 float speedValue = 400;
 
