@@ -1,6 +1,6 @@
 #pragma once
 #define SW_Battery_h
-#include <Arduino.h>
+#include "common.h"
 
 //* Controls the car:
 // Finds the distance between.
@@ -10,6 +10,11 @@ class carController
 {
 
 public:
+    struct DistanceDriven
+    {
+        int leftDistance;
+        int rightDistance;
+    };
     // carController();
 
     /*
@@ -26,15 +31,15 @@ public:
     // By using steps and the known gearRatio of the car,
     // We can find the speed of the car in Cm per second.
 
-    float calculatePowerConsumption(int distance);
+    float calculatePowerConsumption(float distance);
 
     //* This function calculates the power consumption:
     // By using the speed of the car and the formula 10 + 2x,
     // where x is cm/s, the mA used is calculated.
 
-    float calculateCarSpeed();
+    float calculateCarSpeed(int distance);
 
-    void updateDisplayInformation(String displayText, int displayTime);
+    void updateDisplayInformation(String displayText);
 
     //* This function updates the display with information about the car:
     // It takes in the information you want to display and shows it,

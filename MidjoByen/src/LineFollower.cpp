@@ -8,15 +8,16 @@
 // Method to start the car and display information during the startup process.
 void LineFollower::startUpSequence()
 {
+    // activates the five frontlinesensors
+    lineSensor.initFiveSensors();
 
-    lineSensor.initFiveSensors();
     Serial.begin(9600);
-    lineSensor.initFiveSensors();
+
+    // start protocol
     lcd.init();
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Press A Button");
-
     buttonA.waitForButton();
     lcd.clear();
     calibrate();
@@ -32,36 +33,55 @@ void LineFollower::startUpSequence()
 }
 
 // The linefollower to follow a piece of tape.
-void LineFollower::lineFollower(bool _left, bool _right)
+void LineFollower::lineFollower()
 {
-    leftCorner = _left;
-    rightCorner = _right;
-
-    if (leftCorner == false && rightCorner == false)
+    // initiates if no recent 90 degreeturn
+    if (rightCorner == 0 && leftCorner == 0)
     {
+        // reads the five sensorvalues in the list, and gives a value between 0 and 4000
         pos = lineSensor.readLine(linesensorValues);
+        // repositions the pos value to between 2000 and -2000, which makes 0 straight forward
         error = pos - wantedValue;
+        // how much off straight + the last value of that times two different konstants
         int speedDifference = (error * Kp) + Td * (error - lastError);
+        // if it off to the right, leftside reduces speed and right turns up
         int leftSpeed = 400 + speedDifference;
+        // constrains the speed to under 400 and over 0
         leftSpeed = constrain(leftSpeed, 0, speedValue);
+        // if off to the left, right loses speed and left side turns up
         int rightSpeed = 400 - speedDifference;
+        // constrains the speed to under 400 and over 0
         rightSpeed = constrain(rightSpeed, 0, speedValue);
+        // applies the calculated speeds to the car
         motors.setSpeeds(leftSpeed, rightSpeed);
+        lastError = error;
     }
 
-    else if (leftCorner == true || rightCorner == true)
+    // initiates if the car recently hit a deadend shortly after a 90degree turn and turned 180 degrees.
+    else if (rightNext == 1)
     {
-        motors.setSpeeds(200, 200);
-    }
-
-    else if (noRoad == 1)
-    {
-        motors.setSpeeds(0, 100);
+        // initiates if there is a right turn shortly after the car turned 180.
+        if (rightCorner == true)
+        {
+            // calls function to turn, and tell it to turn 90 degrees, with 400 speed, with both wheels.
+            turnAngle(90, speedValue, true);
+            rightNext = 0;
+            rightCorner = 0;
+            deadEnd = 0;
+            // this will block the if-statement when all sensors are fairly low, for 100ms.
+            afterNext = 1;
+            afterTime = millis();
+            // reads the sensors again.
+            lineSensor.readCalibrated(linesensorValues);
+        }
     }
 }
 
 void LineFollower::calibrate()
 {
+    // Calibration function
+    // Turns car left and right while calibrating the linesensor
+
     delay(1000);
     for (int i = 0; i <= 120; i++)
     {
@@ -76,7 +96,6 @@ void LineFollower::calibrate()
         lineSensor.calibrate();
     }
     motors.setSpeeds(0, 0);
-    lineSensor.readCalibrated(linesensorValues);
 }
 
 void LineFollower::turnAngle(int angle, int turnSpeed, bool turnWithBothWheels)
@@ -86,7 +105,7 @@ void LineFollower::turnAngle(int angle, int turnSpeed, bool turnWithBothWheels)
     int rightStartAngle = encoders.getCountsRight();
 
     motors.setSpeeds(0, 0);
-    delay(250);
+    delay(100);
 
     if (turnWithBothWheels == true)
     {
@@ -118,53 +137,91 @@ void LineFollower::turnAngle(int angle, int turnSpeed, bool turnWithBothWheels)
 
 bool LineFollower::checkForTurn(int firstValue, int secondValue, int thirdValue)
 {
-    // Checks if the car drives over a sharp turn
-    if (linesensorValues[firstValue] >= 900 && linesensorValues[2] >= 900 && linesensorValues[secondValue] >= 900 && leftCorner == false && linesensorValues[thirdValue] > 200)
+    lineSensor.readCalibrated(linesensorValues);
+
+    // reads all the front sensors
+    // Checks if the car drives over a 90degree leftturn
+    // initiates if the middle and two left sensors are very high, and first right sensor i fairly low
+    if (linesensorValues[firstValue] >= 900 && linesensorValues[2] >= 900 && linesensorValues[secondValue] >= 900 && leftCorner == 0 && linesensorValues[thirdValue] > 100)
     {
         cornerTime = millis();
         deadEnd = 1;
         deadTime = millis();
-        return true;
+        turnTime = millis();
+        if (firstValue == 0)
+        {
+            noRoadLeft = 1;
+            leftCorner = 1;
+        }
+        else if (firstValue == 3)
+        {
+            noRoadRight = 1;
+            rightCorner = 1;
+        }
     }
-    return false;
 }
 
 void LineFollower::endOfLine()
 {
-    if (linesensorValues[0] < 200 && linesensorValues[1] < 200 && linesensorValues[2] < 200 && linesensorValues[3] < 200 && linesensorValues[4] < 200)
+
+    // initiates if all sensors read fairly low values (none are on the black tape), and afternext are zero.
+    if (linesensorValues[0] < 200 && linesensorValues[1] < 200 && linesensorValues[2] < 200 && linesensorValues[3] < 200 && linesensorValues[4] < 200 && afterNext == 0)
     {
-        if (deadEnd == 0)
+
+        // initiates if no recent 90 degree turns
+        if (deadEnd == 0 && noRoadLeft == 0 && noRoadRight == 0)
         {
-            motors.setSpeeds(200, 200);
+            motors.setSpeeds(speedValue, speedValue);
         }
-        else if (deadEnd == 1)
+
+        // initiates if there is a 90degree turn with tape after it, and a little later a deadend.
+        else if (deadEnd == 1 && noRoadLeft == 0 && noRoadRight == 0)
         {
-            turnAngle(180, 200, true);
+            turnAngle(180, speedValue, true); // turns the car 180 degrees
+            // initiates the the car turn 90 degrees right before straight ahead i next turn if-statement.
+            rightNext = 1;
+        }
+
+        // initiates right after a 90degrre leftturn, if there are no tape (all sensors are fairly low).
+        else if (noRoadLeft == 1 && deadEnd == 1)
+        {
+            // turns the car 90 degrees to the left.
+            turnAngle(-90, speedValue, true);
+            // resets the parameter values.
+            noRoadLeft = 0;
+            deadEnd = 0;
+        }
+        // same as over, but towards the right
+        else if (noRoadRight == 1 && deadEnd == 1)
+        {
+            turnAngle(90, speedValue, true);
+            noRoadRight = 0;
+            deadEnd = 0;
         }
     }
-
-    if ((millis() - cornerTime) > 100 && (millis() - cornerTime) < 200)
+    // resets the corner values fast after a 90degree turn, the variables lasts for 10ms
+    if ((millis() - cornerTime) > 10 && (millis() - cornerTime) < 20)
     {
-        if (linesensorValues[2] <= 200)
-        {
-            lcd.setCursor(0, 0);
-            turnTime = millis();
-            noRoad = 1;
-            lcd.print(noRoad);
-        }
-        leftCorner = false;
-        rightCorner = false;
+        leftCorner = 0;
+        rightCorner = 0;
     }
 
-    if ((millis() - turnTime) >= 500)
+    // resets the "no tape after a 90degree values" 150ms after a 90degree turn.
+    if ((millis() - turnTime) >= 150)
     {
-        noRoad = 0;
+        noRoadLeft = 0;
+        noRoadRight = 0;
     }
 
-    if ((millis() - deadTime) >= 1000)
+    // resets the "deadend shortly after e 90degree turn" after 550ms
+    if ((millis() - deadTime) >= 550)
     {
         deadEnd = 0;
     }
 
-    lastError = error;
+    // resets the " block low sensorvalues after a 90degree right turn after a 180 degree rotation" after 100ms.
+    if ((millis() - afterTime) >= 100)
+    {
+        afterNext = 0;
+    }
 }
