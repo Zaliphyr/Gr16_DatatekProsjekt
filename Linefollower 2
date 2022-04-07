@@ -1,25 +1,26 @@
-#include <Zumo32U4.h>       // importerar bibliotek
+// import libraries
+#include <Zumo32U4.h>
 #include <Wire.h>
 
 
+// give descriptive names to the libraries
 Zumo32U4ButtonA buttonA;
-Zumo32U4Motors motors;     // gir beskivande namn
+Zumo32U4Motors motors;     
 Zumo32U4Encoders encoders;
 Zumo32U4LCD lcd;
 Zumo32U4LineSensors lineSensor;
 Zumo32U4Buzzer buzzer;
 
 
-
+// create necessary variables
 int pos;
 unsigned int linesensorValues[5];
 int error;
 const int wantedValue = 2000;
-float Kp = 0.5;  // kanskje endre for betre linjefølging?
-float Td = 1.5;  // kanskje endre for betre linjefølging?
+float Kp = 0.5; 
+float Td = 1.5; 
 int lastError = 0;
 float speedValue = 400;
-
 int leftCorner = 0;
 int rightCorner = 0;
 int cornerTime = 0;
@@ -36,14 +37,16 @@ int afterTime = 0;
 
 
 void setup() {
+  // activates the five frontlinesensors
   lineSensor.initFiveSensors();
+  
   Serial.begin(9600);
-  lineSensor.initFiveSensors();
+  
+  //start protocol
   lcd.init();
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Press A Button");
-
   buttonA.waitForButton();
   lcd.clear();
   cal();
@@ -60,10 +63,11 @@ void setup() {
 }
 
 void loop() {
-
+  //reads all the front sensors
   lineSensor.readCalibrated(linesensorValues);
 
-  // Checks if the car drives over a sharp turn
+  // Checks if the car drives over a 90degree leftturn
+  // initiates if the middle and two left sensors are very high, and first right sensor i fairly low
   if (linesensorValues[0] >= 900 && linesensorValues[2] >= 900 && linesensorValues[1] && leftCorner == 0 && linesensorValues[3] > 100){
     leftCorner = 1;
     cornerTime = millis();
@@ -73,7 +77,8 @@ void loop() {
     noRoadLeft = 1;
   }
 
-  // Checks if the car drives over a sharp turn
+  // Checks if the car drives over a 90degree rightturn
+  // initiates if the middle and two right sensors are very high, and first left sensor i fairly low
   else if (linesensorValues[3] >= 900 && linesensorValues[2] >= 900 && linesensorValues[4] >= 900 && rightCorner == 0 && linesensorValues[1] > 100){
     cornerTime = millis();
     rightCorner = 1;
@@ -83,10 +88,7 @@ void loop() {
     noRoadRight = 1;
   }
 
-  else{
-    speedValue = 400;
-  }
-
+  // initiates if no recent 90 degreeturn
   if( leftCorner == 0 && rightCorner == 0){
     pos = lineSensor.readLine(linesensorValues);
     error = pos - wantedValue;
