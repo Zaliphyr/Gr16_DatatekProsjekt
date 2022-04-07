@@ -17,7 +17,7 @@ int pos;
 unsigned int linesensorValues[5];
 int error;
 const int wantedValue = 2000;
-float Kp = 0.6; 
+float Kp = 0.5; 
 float Td = 2; 
 int lastError = 0;
 float speedValue = 400;
