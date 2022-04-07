@@ -11,3 +11,6 @@ static Zumo32U4Encoders encoders;
 static Zumo32U4LCD lcd;
 static Zumo32U4LineSensors lineSensor;
 static Zumo32U4Buzzer buzzer;
+
+// Driving distance in meters
+static int carDrivingDistance = 10;

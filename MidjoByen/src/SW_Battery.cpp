@@ -4,28 +4,37 @@
 #include <Zumo32U4.h>
 #include "common.h"
 
-int carController::getCarDistance()
+static int rightDistance = 0;
+static int leftDistance = 0;
+
+float carController::getCarDistance()
 {
-    int rightDistance = encoders.getCountsRight();
-    int leftDistance = encoders.getCountsLeft();
-    leftDistance = leftDistance / 81;
-    rightDistance = rightDistance / 81;
-    int distance = (leftDistance + rightDistance) / 2;
+    Serial.println(rightDistance);
+    rightDistance += encoders.getCountsAndResetRight();
+    leftDistance += encoders.getCountsAndResetLeft();
+    Serial.println(rightDistance);
+    leftDistance = leftDistance / 79;
+    rightDistance = rightDistance / 79;
+    float distance = (leftDistance + rightDistance) / 2;
     return distance;
 }
 
-void carController::resetCarDistance()
+float carController::calculatePowerConsumption(int distance)
 {
-    encoders.getCountsAndResetLeft();
-    encoders.getCountsAndResetRight();
+    float powerConsumption = distance / carDrivingDistance;
+    float batteryChargeLeft = 100 - powerConsumption;
+    lcd.print(String(batteryChargeLeft));
+    if (batteryChargeLeft <= 0)
+    {
+        motors.setSpeeds(0, 0);
+    }
+    return batteryChargeLeft;
 }
 
-int carController::calculatePowerConsumption(int carSpeed)
-
+float carController::calculateCarSpeed()
 {
-    int powerConsumption = 10 + 2 * carSpeed;
-    int batteryChargeLeft = powerConsumption / 1200;
-    return batteryChargeLeft;
+    float carSpeed = ((getCarDistance() / 100) / (millis() / 1000));
+    return carSpeed;
 }
 
 void carController::updateDisplayInformation(String displayText, int displayTime)

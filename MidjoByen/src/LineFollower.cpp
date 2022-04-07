@@ -145,8 +145,6 @@ void LineFollower::endOfLine()
 
     if ((millis() - cornerTime) > 100 && (millis() - cornerTime) < 200)
     {
-        leftCorner = false;
-        rightCorner = false;
         if (linesensorValues[2] <= 200)
         {
             lcd.setCursor(0, 0);
@@ -154,6 +152,8 @@ void LineFollower::endOfLine()
             noRoad = 1;
             lcd.print(noRoad);
         }
+        leftCorner = false;
+        rightCorner = false;
     }
 
     if ((millis() - turnTime) >= 500)

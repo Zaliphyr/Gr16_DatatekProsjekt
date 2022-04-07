@@ -8,15 +8,16 @@
 // Updates the car's display to show information.
 class carController
 {
+
 public:
-    carController();
+    // carController();
 
     /*
     Finds the distance the car has traversed.
     Finds the distance the car has travelled since the start.
-     @returned  distance The traveled distance in mm.
+     @returned  distance The traveled distance in cm.
     */
-    int getCarDistance();
+    float getCarDistance();
 
     //* Resets the motors encoders values.
     void resetCarDistance();
@@ -25,11 +26,13 @@ public:
     // By using steps and the known gearRatio of the car,
     // We can find the speed of the car in Cm per second.
 
-    int calculatePowerConsumption(int carSpeed);
+    float calculatePowerConsumption(int distance);
 
     //* This function calculates the power consumption:
     // By using the speed of the car and the formula 10 + 2x,
     // where x is cm/s, the mA used is calculated.
+
+    float calculateCarSpeed();
 
     void updateDisplayInformation(String displayText, int displayTime);
 
