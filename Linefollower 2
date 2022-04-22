@@ -31,7 +31,7 @@ int deadEnd = 0;
 int deadTime = 0;
 int rightNext = 0;
 int negativeTurnSpeed;
-int turnRefrence ;
+int turnRefrence = 0;
 int afterNext = 0;
 int afterTime = 0;
 
