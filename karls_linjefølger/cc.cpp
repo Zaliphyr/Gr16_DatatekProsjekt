@@ -1,7 +1,5 @@
 #include "common.h"
 #include "cc.h"
-#include <Arduino.h>
-#include <Wire.h>
 
 void cc::init()
 {
@@ -25,7 +23,10 @@ void cc::init()
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Line cal");
+}
 
+void cc:calibration(){
+    
     delay(1000);
     for (int i = 0; i <= 120; i++)
     {
@@ -45,7 +46,7 @@ void cc::init()
     lcd.setCursor(0, 0);
     lcd.print("Done");
     delay(1000);
-    lcd.clear();
+    lcd.clear();    
 }
 
 void cc::loop()
