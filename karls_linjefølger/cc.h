@@ -57,6 +57,7 @@ class cc
     private:
         // Private functions
         void intersection_checker();
+        void calibratin();
         void lost_line();
         void followLine();
         void turn_sharp(bool left);
